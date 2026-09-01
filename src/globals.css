@@ -1,0 +1,61 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+:root {
+  --edcheck-blue: #0709b7;
+  --edcheck-blue-dark: #030449;
+  --edcheck-blue-navy: #180d6e;
+  --edcheck-purple: #cb30e0;
+  --edcheck-green: #34c759;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  background: #e5e5e5;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Bootstrap only ships opacity-25/50/75/100; a couple of extra stops used by the design */
+.opacity-70 {
+  opacity: 0.7;
+}
+.opacity-80 {
+  opacity: 0.8;
+}
+.opacity-90 {
+  opacity: 0.9;
+}
+
+.edcheck-canvas {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.edcheck-canvas button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Normal-flow "card" screens (sign up/in, onboarding) share this scroll wrapper
+   so tall content (e.g. the search/filter or curriculum screens) scrolls
+   inside the card instead of forcing the whole page to grow. */
+.edcheck-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.edcheck-card button {
+  border: none;
+  cursor: pointer;
+}
