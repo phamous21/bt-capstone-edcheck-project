@@ -38,7 +38,7 @@ export default function Interests({ onNext, onBack }) {
 
       <button
         type="button"
-        onClick={onNext}
+        onClick={() => onNext?.(selected)}
         className="d-flex align-items-center justify-content-center w-100"
         style={{ height: 48, borderRadius: 10, background: "#0709b7", border: "none" }}
       >

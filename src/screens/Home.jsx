@@ -1,5 +1,16 @@
 import BottomNav from "../components/BottomNav";
 import { PlayFill, Clock, Trophy, ChevronRight, ArrowUp } from "react-bootstrap-icons";
+import * as api from "../lib/api";
+import { useApi } from "../lib/useApi";
+import { useAuth, displayName } from "../context/AuthContext";
+import { idOf, titleOf, descriptionOf } from "../lib/normalize";
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good Morning";
+  if (h < 18) return "Good Afternoon";
+  return "Good Evening";
+}
 
 const imgEmojioneClosedBook = "https://www.figma.com/api/mcp/asset/ad13621f-8c49-49ed-83d8-6bbc7e527417.svg";
 const imgEmojioneBlueBook = "https://www.figma.com/api/mcp/asset/cff320ca-6ebd-462c-9778-bfa15ee56114.svg";
@@ -8,13 +19,27 @@ const imgGroup66 = "https://www.figma.com/api/mcp/asset/51792236-14a1-48de-a961-
 const imgEllipse16 = "https://www.figma.com/api/mcp/asset/da34a8d1-df30-44d1-af6b-95311ebb2f9e.svg";
 const imgEllipse17 = "https://www.figma.com/api/mcp/asset/99ecf273-7f88-444e-aefe-c12ad27a53c4.svg";
 
-const recommended = ["Today's Learning", "Today's Learning", "Today's Learning", "Today's Learning"];
-
 export default function Home({ onNavigate, onStartLearning, onExplore }) {
+  const { user } = useAuth();
+
+  // The hero card shows the course you're partway through; recommendations
+  // fall back to the general catalogue.
+  const { data: enrollments } = useApi((signal) => api.getMyEnrollments({ signal }), []);
+  const { data: catalogue } = useApi((signal) => api.getCourses({ signal }), []);
+
+  const current = api.asList(enrollments)[0];
+  const currentCourse = api.pick(current, ["course"], current);
+  const heroTitle = currentCourse ? titleOf(currentCourse, "Python for beginners") : "Python for beginners";
+  const heroDescription =
+    (currentCourse && descriptionOf(currentCourse)) ||
+    "Build your foundation with core python concepts step by step";
+
+  const recommended = api.asList(catalogue).slice(0, 4);
+
   return (
     <div className="position-relative w-100 h-100 bg-white">
       <p className="position-absolute fw-bold text-black text-nowrap m-0" style={{ left: 100, top: 52, fontSize: 20 }}>
-        Good Morning, Alex,
+        {greeting()}, {displayName(user)},
       </p>
       <p className="position-absolute fw-semibold text-black opacity-80 text-nowrap m-0" style={{ left: 100, top: 81, fontSize: 10 }}>
         Ready to continue your learning journey
@@ -31,11 +56,10 @@ export default function Home({ onNavigate, onStartLearning, onExplore }) {
       </div>
 
       <p className="position-absolute fw-bold text-black text-nowrap m-0" style={{ left: 413, top: 135, fontSize: 20 }}>
-        Python for beginners
+        {heroTitle}
       </p>
-      <div className="position-absolute fw-bold opacity-50 text-black" style={{ left: 413, top: 172, fontSize: 15 }}>
-        <p className="m-0">Build your foundation with core</p>
-        <p className="m-0">python concepts step by step</p>
+      <div className="position-absolute fw-bold opacity-50 text-black" style={{ left: 413, top: 172, fontSize: 15, width: 420 }}>
+        <p className="m-0">{heroDescription}</p>
       </div>
 
       <button
@@ -89,10 +113,23 @@ export default function Home({ onNavigate, onStartLearning, onExplore }) {
         View all
       </button>
       <div className="position-absolute d-flex gap-3" style={{ left: 101, top: 745 }}>
-        {recommended.map((label, i) => (
-          <div key={i} className="d-flex flex-column justify-content-center px-4" style={{ width: 251, height: 104, borderRadius: 15, background: "#d9d9d9" }}>
-            <span className="fw-bold" style={{ fontSize: 15, color: "#0709b6" }}>{label}</span>
-            <span className="fw-bold" style={{ fontSize: 15, color: "#0709b6" }}>{label}</span>
+        {recommended.length === 0 && (
+          <div className="d-flex align-items-center px-4" style={{ width: 251, height: 104, borderRadius: 15, background: "#d9d9d9" }}>
+            <span className="fw-bold" style={{ fontSize: 13, color: "#666" }}>No courses yet</span>
+          </div>
+        )}
+        {recommended.map((course, i) => (
+          <div
+            key={idOf(course, i)}
+            className="d-flex flex-column justify-content-center px-4"
+            style={{ width: 251, height: 104, borderRadius: 15, background: "#d9d9d9" }}
+          >
+            <span className="fw-bold" style={{ fontSize: 15, color: "#0709b6" }}>{titleOf(course)}</span>
+            {descriptionOf(course) && (
+              <span className="text-truncate" style={{ fontSize: 12, color: "#555" }}>
+                {descriptionOf(course)}
+              </span>
+            )}
           </div>
         ))}
       </div>

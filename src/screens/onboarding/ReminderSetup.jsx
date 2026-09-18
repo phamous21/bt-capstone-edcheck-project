@@ -70,7 +70,7 @@ export default function ReminderSetup({ onFinish, onBack }) {
 
       <button
         type="button"
-        onClick={onFinish}
+        onClick={() => onFinish?.({ days, smartReminder: smart, time: "06:00AM" })}
         className="d-flex align-items-center justify-content-center w-100"
         style={{ height: 48, borderRadius: 10, background: "#0709b7", border: "none" }}
       >

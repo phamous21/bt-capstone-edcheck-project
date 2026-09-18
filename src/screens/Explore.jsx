@@ -6,6 +6,9 @@ import {
   BarChartFill,
   Robot,
 } from "react-bootstrap-icons";
+import * as api from "../lib/api";
+import { useApi } from "../lib/useApi";
+import { idOf, titleOf, descriptionOf } from "../lib/normalize";
 
 const CATEGORIES = [
   { key: "design", label: "Design", Icon: PenFill, bg: "#F3A6A6" },
@@ -16,7 +19,13 @@ const CATEGORIES = [
   { key: "data-science", label: "Data science", Icon: PenFill, bg: "#C9C9F5" },
 ];
 
-export default function Explore({ onSearch, onNext, onBack }) {
+export default function Explore({ onSearch, onNext, onBack, onOpenCourse }) {
+  const { data, loading, error } = useApi(
+    (signal) => api.getCourses({ signal }),
+    [],
+  );
+  const courses = api.asList(data).slice(0, 4);
+
   return (
     <div className="edcheck-card p-4 p-md-5">
       <p className="fw-bold m-0 mb-3" style={{ fontSize: 24 }}>
@@ -63,24 +72,60 @@ export default function Explore({ onSearch, onNext, onBack }) {
           Popular Courses
         </p>
       </div>
-      <div
-        className="d-flex align-items-center gap-3 p-3 mb-4"
-        style={{ border: "1px solid #ccc", borderRadius: 10 }}
-      >
-        <div
-          className="d-flex align-items-center justify-content-center"
-          style={{
-            width: 60,
-            height: 60,
-            borderRadius: 10,
-            background: "#7B2FF7",
-          }}
-        >
-          <Robot size={26} color="#FFD93D" />
-        </div>
-        <p className="fw-bold m-0" style={{ fontSize: 18 }}>
-          AI automation Engineer
-        </p>
+
+      <div className="d-flex flex-column gap-3 mb-4">
+        {loading && (
+          <p className="m-0" style={{ fontSize: 14, color: "#666" }}>
+            Loading courses…
+          </p>
+        )}
+
+        {error && !loading && (
+          <p className="m-0" style={{ fontSize: 14, color: "#c0392b" }}>
+            {error.message}
+          </p>
+        )}
+
+        {!loading && !error && courses.length === 0 && (
+          <p className="m-0" style={{ fontSize: 14, color: "#666" }}>
+            No courses available yet.
+          </p>
+        )}
+
+        {courses.map((course, i) => (
+          <button
+            key={idOf(course, i)}
+            type="button"
+            onClick={() => onOpenCourse?.(course)}
+            className="d-flex align-items-center gap-3 p-3 w-100 bg-white text-start"
+            style={{ border: "1px solid #ccc", borderRadius: 10 }}
+          >
+            <div
+              className="d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 10,
+                background: "#7B2FF7",
+              }}
+            >
+              <Robot size={26} color="#FFD93D" />
+            </div>
+            <div className="flex-fill" style={{ minWidth: 0 }}>
+              <p className="fw-bold m-0" style={{ fontSize: 18 }}>
+                {titleOf(course)}
+              </p>
+              {descriptionOf(course) && (
+                <p
+                  className="m-0 text-truncate"
+                  style={{ fontSize: 13, color: "#666" }}
+                >
+                  {descriptionOf(course)}
+                </p>
+              )}
+            </div>
+          </button>
+        ))}
       </div>
 
       <button

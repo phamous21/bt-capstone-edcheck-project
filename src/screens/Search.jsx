@@ -1,12 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search as SearchIcon, ArrowLeft, ChevronDown } from "react-bootstrap-icons";
+import * as api from "../lib/api";
+import { useApi } from "../lib/useApi";
+import { idOf, titleOf } from "../lib/normalize";
 
 const LEVELS = ["All", "Beginner", "Intermediate", "Advance"];
-const COURSES = Array.from({ length: 18 }, (_, i) => `Course ${i + 1}`);
 
-export default function Search({ onBack, onShowResults }) {
+export default function Search({ onBack, onShowResults, onOpenCourse }) {
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [level, setLevel] = useState("Beginner");
+
+  // Debounce typing so we don't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // With a query we hit /courses/search; with an empty box we list /courses.
+  const { data, loading, error } = useApi(
+    (signal) =>
+      debounced
+        ? api.searchCourses(debounced, { signal })
+        : api.getCourses({ signal }),
+    [debounced]
+  );
+
+  const courses = api.asList(data);
+
+  const filtered =
+    level === "All"
+      ? courses
+      : courses.filter((c) => {
+          const courseLevel = api.pick(c, ["level", "difficulty"], "");
+          return String(courseLevel).toLowerCase() === level.toLowerCase();
+        });
 
   return (
     <div className="edcheck-card p-4 p-md-5">
@@ -59,21 +87,44 @@ export default function Search({ onBack, onShowResults }) {
         <ChevronDown size={16} />
       </button>
 
-      <div className="d-flex flex-wrap gap-2 mb-4">
-        {COURSES.map((c) => (
-          <button key={c} type="button" className="fw-bold px-3 py-2 bg-white" style={{ borderRadius: 8, border: "1px solid var(--edcheck-blue)", fontSize: 13 }}>
-            {c}
-          </button>
-        ))}
+      <div className="mb-4" style={{ minHeight: 60 }}>
+        {loading && <p className="m-0" style={{ fontSize: 14, color: "#666" }}>Loading courses…</p>}
+
+        {error && !loading && (
+          <p className="m-0" style={{ fontSize: 14, color: "#c0392b" }}>{error.message}</p>
+        )}
+
+        {!loading && !error && filtered.length === 0 && (
+          <p className="m-0" style={{ fontSize: 14, color: "#666" }}>
+            {debounced ? `No courses match “${debounced}”.` : "No courses available yet."}
+          </p>
+        )}
+
+        <div className="d-flex flex-wrap gap-2">
+          {filtered.map((course, i) => (
+            <button
+              key={idOf(course, i)}
+              type="button"
+              onClick={() => onOpenCourse?.(course)}
+              className="fw-bold px-3 py-2 bg-white"
+              style={{ borderRadius: 8, border: "1px solid var(--edcheck-blue)", fontSize: 13 }}
+            >
+              {titleOf(course)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <button
         type="button"
         onClick={onShowResults}
+        disabled={loading}
         className="d-flex align-items-center justify-content-center w-100"
-        style={{ height: 48, borderRadius: 10, background: "var(--edcheck-blue)", border: "none" }}
+        style={{ height: 48, borderRadius: 10, background: "var(--edcheck-blue)", border: "none", opacity: loading ? 0.7 : 1 }}
       >
-        <span className="fw-bold text-white" style={{ fontSize: 16 }}>Show {COURSES.length} Results</span>
+        <span className="fw-bold text-white" style={{ fontSize: 16 }}>
+          {loading ? "Searching…" : `Show ${filtered.length} Result${filtered.length === 1 ? "" : "s"}`}
+        </span>
       </button>
     </div>
   );

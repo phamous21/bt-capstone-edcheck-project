@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Google, Apple } from "react-bootstrap-icons";
+import { useAuth } from "../context/AuthContext";
 
 const inputStyle = {
   height: 48,
@@ -11,11 +12,34 @@ const inputStyle = {
 };
 
 export default function SignIn({ onSignIn, onGoToSignUp }) {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await login({ email: email.trim(), password });
+      onSignIn?.();
+    } catch (err) {
+      setError(err.message || "Sign in failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className="edcheck-card p-4 p-md-5">
+    <form className="edcheck-card p-4 p-md-5" onSubmit={handleSubmit} noValidate>
       <p className="fw-semibold m-0" style={{ fontSize: 24 }}>
         Welcome back
       </p>
@@ -49,6 +73,8 @@ export default function SignIn({ onSignIn, onGoToSignUp }) {
 
         <input
           type="email"
+          name="email"
+          autoComplete="email"
           placeholder="Email address"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -57,6 +83,8 @@ export default function SignIn({ onSignIn, onGoToSignUp }) {
         />
         <input
           type="password"
+          name="password"
+          autoComplete="current-password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -68,13 +96,27 @@ export default function SignIn({ onSignIn, onGoToSignUp }) {
           Forgot password?
         </button>
 
+        {error && (
+          <p className="m-0" style={{ fontSize: 13, color: "#c0392b" }} role="alert">
+            {error}
+          </p>
+        )}
+
         <button
-          type="button"
-          onClick={onSignIn}
+          type="submit"
+          disabled={submitting}
           className="d-flex align-items-center justify-content-center w-100"
-          style={{ height: 48, borderRadius: 10, background: "#0709b7", border: "none" }}
+          style={{
+            height: 48,
+            borderRadius: 10,
+            background: "#0709b7",
+            border: "none",
+            opacity: submitting ? 0.7 : 1,
+          }}
         >
-          <span className="fw-bold text-white" style={{ fontSize: 16 }}>Sign in</span>
+          <span className="fw-bold text-white" style={{ fontSize: 16 }}>
+            {submitting ? "Signing in…" : "Sign in"}
+          </span>
         </button>
       </div>
 
@@ -84,6 +126,6 @@ export default function SignIn({ onSignIn, onGoToSignUp }) {
           Sign up
         </button>
       </div>
-    </div>
+    </form>
   );
 }

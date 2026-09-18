@@ -10,6 +10,9 @@ import {
   RecordCircleFill,
   BoxArrowRight,
 } from "react-bootstrap-icons";
+import * as api from "../lib/api";
+import { useApi } from "../lib/useApi";
+import { useAuth } from "../context/AuthContext";
 
 const MENU = [
   { key: "goals", label: "Learning Goals", Icon: CheckCircle },
@@ -21,13 +24,40 @@ const MENU = [
 ];
 
 export default function Profile({ onNavigate, onLogOut }) {
+  const { user } = useAuth();
+
+  // Stat tiles come from the user's own enrollments / badges.
+  const { data: enrollments } = useApi((signal) => api.getMyEnrollments({ signal }), []);
+  const { data: badges } = useApi((signal) => api.getMyBadges({ signal }), []);
+
+  const enrollmentList = api.asList(enrollments);
+  const badgeList = api.asList(badges);
+
+  const first = api.pick(user, ["firstName", "first_name"], "");
+  const last = api.pick(user, ["lastName", "surname", "last_name"], "");
+  const fullName =
+    [first, last].filter(Boolean).join(" ") ||
+    api.pick(user, ["name", "fullName", "full_name"], "Your profile");
+  const email = api.pick(user, ["email"], "");
+
+  const lessonsDone = enrollmentList.reduce((total, e) => {
+    const n = Number(api.pick(e, ["completedLessons", "lessonsCompleted", "completedMaterials"], 0));
+    return total + (Number.isFinite(n) ? n : 0);
+  }, 0);
+
+  const stats = [
+    { value: enrollmentList.length, label: "Courses" },
+    { value: lessonsDone, label: "Lessons" },
+    { value: badgeList.length, label: "Certificates" },
+  ];
+
   return (
     <div className="position-relative w-100 h-100 bg-white">
       <div className="position-absolute d-flex align-items-center gap-4" style={{ left: 100, top: 50 }}>
         <PersonCircle size={110} color="#c9c9d9" />
         <div>
-          <p className="fw-bold m-0" style={{ fontSize: 20 }}>ALEX JOHN</p>
-          <p className="fw-normal m-0" style={{ fontSize: 15, color: "#333" }}>alexjohn@gmail.com</p>
+          <p className="fw-bold m-0 text-uppercase" style={{ fontSize: 20 }}>{fullName}</p>
+          {email && <p className="fw-normal m-0" style={{ fontSize: 15, color: "#333" }}>{email}</p>}
           <button type="button" className="fw-normal p-0 border-0 bg-transparent mt-1" style={{ fontSize: 14, color: "var(--edcheck-blue)" }}>
             Edit Profile
           </button>
@@ -35,11 +65,7 @@ export default function Profile({ onNavigate, onLogOut }) {
       </div>
 
       <div className="position-absolute d-flex gap-4" style={{ left: 100, top: 195, width: 1240 }}>
-        {[
-          { value: 1, label: "Courses" },
-          { value: 10, label: "Lessons" },
-          { value: 1, label: "Certificates" },
-        ].map((s) => (
+        {stats.map((s) => (
           <div key={s.label} className="flex-fill d-flex flex-column align-items-center justify-content-center py-3" style={{ borderRadius: 10, background: "#c3c2f4" }}>
             <span className="fw-bold" style={{ fontSize: 22 }}>{s.value}</span>
             <span className="fw-normal" style={{ fontSize: 15 }}>{s.label}</span>

@@ -1,5 +1,8 @@
 import { useState } from "react";
 import ResponsiveCanvas from "./components/ResponsiveCanvas";
+import * as api from "./lib/api";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { idOf } from "./lib/normalize";
 
 import SignUp from "./screens/SignUp";
 import SignIn from "./screens/SignIn";
@@ -46,11 +49,47 @@ const CARD_PAGES = new Set([
 ]);
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  );
+}
+
+function AppRoutes() {
+  const { logout, restoring } = useAuth();
   const [page, setPage] = useState("signup");
   const [searchReturnTo, setSearchReturnTo] = useState("learn");
   const [quizResult, setQuizResult] = useState({ correct: 4, total: 5 });
+  // Onboarding answers accumulate here, then go up in one PATCH at Finish.
+  const [onboarding, setOnboarding] = useState({});
+  // The course whose curriculum / modules we're currently viewing.
+  const [courseId, setCourseId] = useState(null);
 
   const goTo = (key) => setPage(NAV_TO_PAGE[key] ?? key);
+
+  const openCourse = (course) => {
+    setCourseId(idOf(course));
+    setPage("curriculum");
+  };
+
+  const finishOnboarding = async (reminder) => {
+    const payload = { ...onboarding, reminder };
+    try {
+      await api.updateOnboarding(payload);
+    } catch {
+      // Don't trap the user in onboarding if the PATCH fails — they can
+      // update these later from Profile.
+    }
+    setPage("home");
+  };
+
+  const handleLogOut = () => {
+    logout();
+    setOnboarding({});
+    setCourseId(null);
+    setPage("signup");
+  };
 
   const openSearch = (from) => {
     setSearchReturnTo(from);
@@ -70,16 +109,40 @@ export default function App() {
 
     // --- Onboarding ---
     case "goals":
-      Screen = <LearningGoals onNext={() => setPage("interests")} onSkip={() => setPage("home")} />;
+      Screen = (
+        <LearningGoals
+          onNext={(goals) => {
+            setOnboarding((o) => ({ ...o, goals }));
+            setPage("interests");
+          }}
+          onSkip={() => setPage("home")}
+        />
+      );
       break;
     case "interests":
-      Screen = <Interests onNext={() => setPage("time")} onBack={() => setPage("goals")} />;
+      Screen = (
+        <Interests
+          onNext={(interests) => {
+            setOnboarding((o) => ({ ...o, interests }));
+            setPage("time");
+          }}
+          onBack={() => setPage("goals")}
+        />
+      );
       break;
     case "time":
-      Screen = <StudyTime onNext={() => setPage("reminder")} onBack={() => setPage("interests")} />;
+      Screen = (
+        <StudyTime
+          onNext={(studyTime) => {
+            setOnboarding((o) => ({ ...o, studyTime }));
+            setPage("reminder");
+          }}
+          onBack={() => setPage("interests")}
+        />
+      );
       break;
     case "reminder":
-      Screen = <ReminderSetup onFinish={() => setPage("home")} onBack={() => setPage("time")} />;
+      Screen = <ReminderSetup onFinish={finishOnboarding} onBack={() => setPage("time")} />;
       break;
 
     // --- Main app ---
@@ -102,13 +165,33 @@ export default function App() {
 
     // --- Explore / search / curriculum ---
     case "explore":
-      Screen = <Explore onSearch={() => openSearch("explore")} onNext={() => openSearch("explore")} onBack={() => setPage("home")} />;
+      Screen = (
+        <Explore
+          onSearch={() => openSearch("explore")}
+          onNext={() => openSearch("explore")}
+          onBack={() => setPage("home")}
+          onOpenCourse={openCourse}
+        />
+      );
       break;
     case "search":
-      Screen = <Search onBack={() => setPage(searchReturnTo)} onShowResults={() => setPage(searchReturnTo)} />;
+      Screen = (
+        <Search
+          onBack={() => setPage(searchReturnTo)}
+          onShowResults={() => setPage(searchReturnTo)}
+          onOpenCourse={openCourse}
+        />
+      );
       break;
     case "curriculum":
-      Screen = <Curriculum onBack={() => setPage("learn")} onStartCourse={() => setPage("module")} />;
+      Screen = (
+        <Curriculum
+          courseId={courseId}
+          onBack={() => setPage("learn")}
+          onStartCourse={() => setPage("module")}
+          onOpenModule={() => setPage("module")}
+        />
+      );
       break;
 
     // --- Lesson / quiz flow ---
@@ -152,8 +235,16 @@ export default function App() {
 
     // --- Profile ---
     case "profile":
-      Screen = <Profile onNavigate={goTo} onLogOut={() => setPage("signup")} />;
+      Screen = <Profile onNavigate={goTo} onLogOut={handleLogOut} />;
       break;
+  }
+
+  if (restoring) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+        <p className="fw-bold m-0" style={{ fontSize: 15, color: "#666" }}>Loading…</p>
+      </div>
+    );
   }
 
   return (
